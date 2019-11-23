@@ -70,11 +70,58 @@ class ReflexAgent(Agent):
         successorGameState = currentGameState.generatePacmanSuccessor(action)
         newPos = successorGameState.getPacmanPosition()
         newFood = successorGameState.getFood()
-        newGhostStates = successorGameState.getGhostStates()
-        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+        # newGhostStates = successorGameState.getGhostStates()
+        # newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+        # https://stackoverflow.com/questions/7781260/how-can-i-represent-an-infinite-number-in-python
+        from decimal import Decimal # infinity values
+        pos_inf = Decimal('Infinity')
+        neg_inf = Decimal('-Infinity')
+
+        if successorGameState.isWin():    #found winning state
+          return pos_inf
+        # get it to move all the time
+        if action==Directions.STOP:
+          return neg_inf
+
+        map_food = newFood.asList()
+        all_ghosts = successorGameState.getGhostPositions()
+        food_distance = list()
+        ghost_distance = list()
+        distance_cost = 0 #extra cost to return
+
+        if newPos in currentGameState.getCapsules():
+          distance_cost += 2
+        #manhattan of examining pos from food
+        for ifood in map_food:
+          food_distance.append( util.manhattanDistance(newPos, ifood) )
+        #manhattan of examining pos from ghosts
+        for ighost in all_ghosts:
+          ghost_distance.append( util.manhattanDistance(newPos, ighost) )
+
+        # my cost for food distances
+        # good if food is close
+        for ifood in food_distance:
+          if ifood>3 and ifood<=13:
+            distance_cost += 0.25
+          elif ifood<=3:
+            distance_cost +=1
+          else:
+            distance_cost += 0.2
+
+        for ighost in ghost_distance:
+          if ighost<2:
+            return neg_inf #ghost too close
+
+        # bad extra cost if ghost is close
+        for ighost in all_ghosts:
+          if ighost==newPos:  # fell on ghost
+            return neg_inf
+          elif util.manhattanDistance(newPos, ighost) <= 3.5: #ghost is a little close
+            distance_cost += 0.8
+
+        return successorGameState.getScore() + distance_cost
 
 def scoreEvaluationFunction(currentGameState):
     """
