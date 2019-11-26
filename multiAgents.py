@@ -153,11 +153,92 @@ class MultiAgentSearchAgent(Agent):
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
 
+# class MinimaxAgent(MultiAgentSearchAgent):
+#     """
+#       Your minimax agent (question 2)
+#     """
+#     # Score the leaves of your minimax tree with the supplied 
+#     # self.evaluationFunction, which defaults to scoreEvaluationFunction. 
+#     # MinimaxAgent extends MultiAgentSearchAgent, which gives access to self.depth and 
+#     # self.evaluationFunction. Make sure your minimax code makes reference to these two variables
+#     def getAction(self, gameState):
+#         """
+#           Returns the minimax action from the current gameState using self.depth
+#           and self.evaluationFunction.
+
+#           Here are some method calls that might be useful when implementing minimax.
+
+#           gameState.getLegalActions(agentIndex):
+#             Returns a list of legal actions for an agent
+#             agentIndex=0 means Pacman, ghosts are >= 1
+
+#           gameState.generateSuccessor(agentIndex, action):
+#             Returns the successor game state after an agent takes an action
+
+#           gameState.getNumAgents():
+#             Returns the total number of agents in the game
+#         """
+#         "*** YOUR CODE HERE ***"
+#         from decimal import Decimal # infinity values
+#         pos_inf = Decimal('Infinity')
+#         neg_inf = Decimal('-Infinity')
+
+#         def max_val(gameState, depth):
+#           # Pacman is always agent 0
+#           # pseucode studied from https://en.wikipedia.org/wiki/Minimax
+#           all_actions = gameState.getLegalActions(0)
+#           # if depth = 0 or node is a terminal node then reached the end
+#           # depth==self.depth means reached max depth
+#           if not all_actions or gameState.isWin() or gameState.isLose() or depth==self.depth:
+#             # return the heuristic value of node
+#             return( self.evaluationFunction(gameState), 0 )
+          
+#           # if maximizingPlayer then value = -inf
+#           low = neg_inf
+#           my_action = None
+#           # building tree
+#           # for each child of node do
+#           for act in all_actions:
+#             # seeking for best available move
+#             # value = max(value, minimax(child, depth - 1, False))
+#             succesVal = min_val( gameState.generateSuccessor(0, act), 1, depth )
+#             succesVal = succesVal[0]
+#             if (succesVal>low):
+#               low, my_action = succesVal, act
+#           return (low, my_action)
+
+#         def min_val(gameState, agentNum, depth):
+#           count_ghosts = gameState.getNumAgents()-1
+#           all_actions = gameState.getLegalActions(agentNum)
+#           if not all_actions:
+#             return ( self.evaluationFunction(gameState), 0 )
+#           # else (* minimizing player *) value := +inf
+#           high = pos_inf
+#           my_action = None
+#           # for each child of node do
+#           for act in all_actions:
+#             # value = min(value, minimax(child, depth - 1, True))
+#             if( agentNum==gameState.getNumAgents()-1 ):
+#               succesVal = max_val( gameState.generateSuccessor(agentNum, act), depth+1 )
+#             else:
+#               succesVal = min_val( gameState.generateSuccessor(agentNum, act), agentNum+1, depth )
+#             succesVal = succesVal[0]
+#             if(succesVal<high):
+#               high, my_action = succesVal, act
+#           return (high, my_action)
+        
+#         max_val = max_val( gameState, 0 )[1]
+#         return max_val
+#         # util.raiseNotDefined()
+
 class MinimaxAgent(MultiAgentSearchAgent):
     """
       Your minimax agent (question 2)
     """
-
+    # Score the leaves of your minimax tree with the supplied 
+    # self.evaluationFunction, which defaults to scoreEvaluationFunction. 
+    # MinimaxAgent extends MultiAgentSearchAgent, which gives access to self.depth and 
+    # self.evaluationFunction. Make sure your minimax code makes reference to these two variables
     def getAction(self, gameState):
         """
           Returns the minimax action from the current gameState using self.depth
@@ -176,7 +257,49 @@ class MinimaxAgent(MultiAgentSearchAgent):
             Returns the total number of agents in the game
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        from decimal import Decimal # infinity values
+        pos_inf = Decimal('Infinity')
+        neg_inf = Decimal('-Infinity')
+
+        def minimaxFunc(gameState, agent, depth):
+          # game won/lost
+          if gameState.isLose() or gameState.isWin() or depth==self.depth:
+            return self.evaluationFunction(gameState)
+          # maximum for pacman
+          if agent==0:
+            max_return=neg_inf
+            for legal_action in gameState.getLegalActions(agent):
+              temp=minimaxFunc( gameState.generateSuccessor(0, legal_action), 1, depth )
+              if temp>max_return:
+                max_return=temp
+            return max_return
+          # minimum for ghosts
+          else: 
+            newAgent = agent + 1
+            # change agent and depth
+            if gameState.getNumAgents() == newAgent:
+              newAgent = 0
+            if newAgent == 0:
+              depth += 1
+
+            min_return=pos_inf
+            for legal_action in gameState.getLegalActions(agent):
+              temp=minimaxFunc( gameState.generateSuccessor(agent, legal_action), newAgent, depth )
+              if temp<min_return:
+                min_return=temp
+            return min_return
+        
+        # perform maximum action for pacman
+        maximizingPlayer = neg_inf
+        act = Directions.WEST
+        for legal_action in gameState.getLegalActions(0):
+          temp = minimaxFunc( gameState.generateSuccessor(0, legal_action), 1, 0 )
+          if temp>maximizingPlayer or maximizingPlayer==neg_inf:
+            maximizingPlayer = temp
+            act = legal_action
+        return act
+        # util.raiseNotDefined()
+
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
