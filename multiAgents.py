@@ -172,6 +172,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         newAgent = agent + 1
         # change agent and depth
         if gameState.getNumAgents() == newAgent:
+          # went through all agents
           newAgent = 0
         if newAgent == 0:
           depth -= 1
@@ -215,17 +216,29 @@ class MinimaxAgent(MultiAgentSearchAgent):
         # Pacman is always agent 0
         for legal_action in gameState.getLegalActions(0):
           temp = self.minimaxFunc( gameState.generateSuccessor(0, legal_action), 1, self.depth )
-          if temp>maximizingPlayer or maximizingPlayer==neg_inf:
+          if temp>maximizingPlayer:
             maximizingPlayer = temp
             act = legal_action
         return act
         # util.raiseNotDefined()
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
+
+    def min_value(self, gameState, agent, depth, a, b):
+      from decimal import Decimal # infinity values
+      pos_inf = Decimal('Infinity')
+      neg_inf = Decimal('-Infinity')
+
+      ghost_actions = gameState.getLegalActions(agent)
+      if not ghost_actions:
+        return self.evaluationFunction(gameState)
+      
+      # minimazing = 
+
+
     """
       Your minimax agent with alpha-beta pruning (question 3)
     """
-
     def getAction(self, gameState):
         """
           Returns the minimax action using self.depth and self.evaluationFunction
