@@ -225,17 +225,47 @@ class MinimaxAgent(MultiAgentSearchAgent):
 class AlphaBetaAgent(MultiAgentSearchAgent):
 
     def min_value(self, gameState, agent, depth, a, b):
-      from decimal import Decimal # infinity values
+      from decimal import Decimal                 # infinity values
       pos_inf = Decimal('Infinity')
+
+      ret_action = Directions.STOP              # random first action
+      if not gameState.getLegalActions(agent):  # list is empty
+        return self.evaluationFunction(gameState), ret_action
+      
+      minimizing = pos_inf
+      for legal_action in gameState.getLegalActions(agent):
+        if agent==(gameState.getNumAgents()-1): #-1 because start from pacman is 0
+          ret_value, action_unused = self.max_value( gameState.generateSuccessor(agent, legal_action), depth-1, a, b)
+        else:
+          ret_value, action_unused = self.min_value( gameState.generateSuccessor(agent, legal_action), agent+1, depth, a, b)
+        if ret_value<minimizing:
+          minimizing = ret_value
+          ret_action = legal_action             # get action for minimum value
+        if minimizing<a:                        #
+          return minimizing, ret_action
+        if minimizing<b:
+          b = minimizing
+      return minimizing, ret_action
+
+    def max_value(self, gameState, depth, a, b):
+      from decimal import Decimal               # infinity values
       neg_inf = Decimal('-Infinity')
 
-      ghost_actions = gameState.getLegalActions(agent)
-      if not ghost_actions:
-        return self.evaluationFunction(gameState)
+      ret_action = Directions.STOP
+      if gameState.isWin() or gameState.isLose() or depth==0:
+        return self.evaluationFunction(gameState), ret_action
       
-      # minimazing = 
-
-
+      maximizing = neg_inf
+      for legal_action in gameState.getLegalActions(0):
+        ret_value, act_unused = self.min_value( gameState.generateSuccessor(0, legal_action), 1, depth, a, b )
+        if maximizing<ret_value:
+          maximizing = ret_value
+          ret_action = legal_action
+        if maximizing>b:
+          return maximizing, ret_action
+        if maximizing>a:
+          a = maximizing
+      return maximizing, ret_action
     """
       Your minimax agent with alpha-beta pruning (question 3)
     """
@@ -244,22 +274,94 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        from decimal import Decimal # infinity values
+        pos_inf = Decimal('Infinity')
+        neg_inf = Decimal('-Infinity')
+        a = neg_inf
+        b = pos_inf
+        val_unused, ret_action = self.max_value(gameState, self.depth, a, b)  #0 is for pacman
+        return ret_action
+        # util.raiseNotDefined()
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
       Your expectimax agent (question 4)
     """
+    def expectimax(self, gameState, agent, depth):
+      from decimal import Decimal # infinity values
+      pos_inf = Decimal('Infinity')
+      neg_inf = Decimal('-Infinity')
+
+      ret_action = Directions.STOP #after change
+      if agent==gameState.getNumAgents(): #checked all agents
+        return self.expectimax(gameState, 0, depth-1)
+        # return self.expectimax(gameState, 0, depth-1), ret_action
+
+      if gameState.isWin() or gameState.isLose() or depth==0:
+        # return self.evaluationFunction(gameState), ret_action
+        return self.evaluationFunction(gameState)
+      
+      if agent!=0:  #ghost
+        ret_sum = 0
+        ret_size = 0
+        for legal_action in gameState.getLegalActions(agent):
+          ret_action = legal_action
+          # ret_value, pou = self.expectimax( gameState.generateSuccessor(agent, legal_action), agent+1, depth )#1=pacman+1
+          ret_value = self.expectimax( gameState.generateSuccessor(agent, legal_action), agent+1, depth )#1=pacman+1
+          # print "to ret_value einai", ret_value
+          ret_sum += ret_value
+          # ret_sum += ret_value[0]
+          ret_size += 1
+        return float(ret_sum)/float(ret_size)
+        # return float(ret_sum)/float(ret_size), ret_action
+      else: #pacman
+        ret = neg_inf
+        for legal_action in gameState.getLegalActions(0):
+          ret_value = self.expectimax( gameState.generateSuccessor(0, legal_action), 1, depth )#1=pacman+1
+          if ret_value>ret:
+            ret = ret_value
+            ret_action = legal_action
+        # return ret, ret_action
+        return ret
 
     def getAction(self, gameState):
         """
           Returns the expectimax action using self.depth and self.evaluationFunction
-
           All ghosts should be modeled as choosing uniformly at random from their
           legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        from decimal import Decimal # infinity values
+        pos_inf = Decimal('Infinity')
+        neg_inf = Decimal('-Infinity')
+
+        # print "TO gameState.getLegalActions(0) EINAI", gameState.getLegalActions(0),
+        # key = lambda x: self.expectimax(gameState.generateSuccessor(0, x), 1, self.depth)
+        # print "TO KEY ", key
+
+        # print max(
+        #   gameState.getLegalActions(0),
+        #   key = lambda x: self.expectimax(gameState.generateSuccessor(0, x), 1, self.depth)
+        # )
+        # print "TO KEY2 ", key
+        return max(
+          gameState.getLegalActions(0),
+          key = lambda x: self.expectimax(gameState.generateSuccessor(0, x), 1, self.depth)
+        )
+
+        # action_list = list()
+        # for legal_action in gameState.getLegalActions(0):
+        #   action_list.append(legal_action)
+        # ret_val = Directions.STOP
+
+        # for legal_action in action_list:
+        #   temp = self.expectimax(gameState.generateSuccessor(0, legal_action), 1, self.depth)
+        #   # print temp
+        #   if temp>ret_val:
+        #     ret_val = temp
+
+        # return ret_val[1]
+        # util.raiseNotDefined()
 
 def betterEvaluationFunction(currentGameState):
     """
