@@ -289,39 +289,28 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
     """
     def expectimax(self, gameState, agent, depth):
       from decimal import Decimal # infinity values
-      pos_inf = Decimal('Infinity')
       neg_inf = Decimal('-Infinity')
 
-      ret_action = Directions.STOP #after change
-      if agent==gameState.getNumAgents(): #checked all agents
-        return self.expectimax(gameState, 0, depth-1)
-        # return self.expectimax(gameState, 0, depth-1), ret_action
+      if agent==gameState.getNumAgents():             #checked all agents
+        return self.expectimax(gameState, 0, depth-1) #start procedure for pacman and lower depth
 
       if gameState.isWin() or gameState.isLose() or depth==0:
-        # return self.evaluationFunction(gameState), ret_action
         return self.evaluationFunction(gameState)
       
-      if agent!=0:  #ghost
-        ret_sum = 0
+      if agent!=0:  #ghost -> make calculation
+        ret_sum = 0.0
         ret_size = 0
         for legal_action in gameState.getLegalActions(agent):
-          ret_action = legal_action
-          # ret_value, pou = self.expectimax( gameState.generateSuccessor(agent, legal_action), agent+1, depth )#1=pacman+1
-          ret_value = self.expectimax( gameState.generateSuccessor(agent, legal_action), agent+1, depth )#1=pacman+1
-          # print "to ret_value einai", ret_value
+          ret_value = float(self.expectimax( gameState.generateSuccessor(agent, legal_action), agent+1, depth ))
           ret_sum += ret_value
-          # ret_sum += ret_value[0]
           ret_size += 1
-        return float(ret_sum)/float(ret_size)
-        # return float(ret_sum)/float(ret_size), ret_action
+        return float(ret_sum)/float(ret_size) #average
       else: #pacman
         ret = neg_inf
         for legal_action in gameState.getLegalActions(0):
           ret_value = self.expectimax( gameState.generateSuccessor(0, legal_action), 1, depth )#1=pacman+1
           if ret_value>ret:
             ret = ret_value
-            ret_action = legal_action
-        # return ret, ret_action
         return ret
 
     def getAction(self, gameState):
@@ -331,36 +320,26 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           legal moves.
         """
         "*** YOUR CODE HERE ***"
+        import random
         from decimal import Decimal # infinity values
-        pos_inf = Decimal('Infinity')
         neg_inf = Decimal('-Infinity')
+        compared = neg_inf
+        legal_actions = list()
 
-        # print "TO gameState.getLegalActions(0) EINAI", gameState.getLegalActions(0),
-        # key = lambda x: self.expectimax(gameState.generateSuccessor(0, x), 1, self.depth)
-        # print "TO KEY ", key
+        for legal_action in gameState.getLegalActions(0):
+          temp = self.expectimax(gameState.generateSuccessor(0, legal_action), 1, self.depth) #1=pacman+1
+          legal_actions.append(legal_action)
+          if temp>compared:
+            compared = temp
+        
+        final_legal_actions = list()
+        for legal_action in gameState.getLegalActions(0):
+          temp = self.expectimax(gameState.generateSuccessor(0, legal_action), 1, self.depth) #1=pacman+1
+          if temp==compared:
+            final_legal_actions.append(legal_action)
+        random_pos = random.randrange(len(final_legal_actions)) #random list index
 
-        # print max(
-        #   gameState.getLegalActions(0),
-        #   key = lambda x: self.expectimax(gameState.generateSuccessor(0, x), 1, self.depth)
-        # )
-        # print "TO KEY2 ", key
-        return max(
-          gameState.getLegalActions(0),
-          key = lambda x: self.expectimax(gameState.generateSuccessor(0, x), 1, self.depth)
-        )
-
-        # action_list = list()
-        # for legal_action in gameState.getLegalActions(0):
-        #   action_list.append(legal_action)
-        # ret_val = Directions.STOP
-
-        # for legal_action in action_list:
-        #   temp = self.expectimax(gameState.generateSuccessor(0, legal_action), 1, self.depth)
-        #   # print temp
-        #   if temp>ret_val:
-        #     ret_val = temp
-
-        # return ret_val[1]
+        return final_legal_actions[random_pos]
         # util.raiseNotDefined()
 
 def betterEvaluationFunction(currentGameState):
@@ -371,7 +350,45 @@ def betterEvaluationFunction(currentGameState):
       DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    from decimal import Decimal # infinity values
+    pos_inf = Decimal('Infinity')
+    # neg_inf = Decimal('-Infinity')
+    
+    pacman_pos = currentGameState.getPacmanPosition()
+    food_list = currentGameState.getFood().asList()
+    ghost_list = currentGameState.getGhostStates()
+    capsule_list = currentGameState.getCapsules()
+    # newScaredTimes = [ghostState.scaredTimer for ghostState in ghost_list]
+
+    if currentGameState.isWin():
+      return pos_inf
+    min_food = pos_inf
+    for food in food_list:
+      temp = util.manhattanDistance( food, pacman_pos )
+      if temp<min_food:
+        min_food = temp
+    min_caps = pos_inf
+    for caps in capsule_list:
+      temp = util.manhattanDistance( caps, pacman_pos )        
+      if temp<min_caps:
+        min_caps = temp
+    ghost_val = 0
+    m_gh_list = list()
+    for gh in ghost_list:
+      min_ghost = util.manhattanDistance( gh.getPosition(), pacman_pos )
+      m_gh_list.append(min_ghost)
+      if min_ghost>0:
+        if gh.scaredTimer!=0:
+          ghost_val += 100
+        else:
+          ghost_val -= 10
+        if min_ghost<4:
+          ghost_val -= 50
+        elif min_ghost<8:
+          ghost_val -= 2
+    if min(m_gh_list)>6:
+      return (min_food + min_caps)*2
+    return currentGameState.getScore() + 10.0/min_food + ghost_val + 10.0/float(min_caps)
 
 # Abbreviation
 better = betterEvaluationFunction
