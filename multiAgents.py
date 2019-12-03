@@ -82,7 +82,7 @@ class ReflexAgent(Agent):
         if successorGameState.isWin():    #found winning state
           return pos_inf
         # get it to move all the time
-        if action==Directions.STOP:
+        if action==Directions.STOP or successorGameState.isLose():
           return neg_inf
 
         map_food = newFood.asList()
@@ -93,20 +93,28 @@ class ReflexAgent(Agent):
 
         if newPos in currentGameState.getCapsules():
           distance_cost += 2
+
         #manhattan of examining pos from food
+        min_food = pos_inf
         for ifood in map_food:
           food_distance.append( util.manhattanDistance(newPos, ifood) )
+          min_food = min(min_food, food_distance)
+          
         #manhattan of examining pos from ghosts
+        min_ghost = pos_inf
         for ighost in all_ghosts:
           ghost_distance.append( util.manhattanDistance(newPos, ighost) )
+          min_ghost = min(min_ghost, ghost_distance)
 
+        if min_ghost>7 and min_food<4:
+          distance_cost += 9
         # my cost for food distances
         # good if food is close
         for ifood in food_distance:
           if ifood>3 and ifood<=13:
             distance_cost += 0.25
           elif ifood<=3:
-            distance_cost +=1
+            distance_cost += 1
           else:
             distance_cost += 0.2
 
@@ -121,7 +129,7 @@ class ReflexAgent(Agent):
           elif util.manhattanDistance(newPos, ighost) <= 3.5: #ghost is a little close
             distance_cost += 0.8
 
-        return successorGameState.getScore() + distance_cost
+        return successorGameState.getScore() + distance_cost + 1.0/float(min_food) - 1.0/float(min_ghost)
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -168,7 +176,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         return self.evaluationFunction(gameState)
       
       # minimum for ghosts
-      if agent!=0:
+      if agent>0:
         newAgent = agent + 1
         # change agent and depth
         if gameState.getNumAgents() == newAgent:
@@ -177,6 +185,8 @@ class MinimaxAgent(MultiAgentSearchAgent):
         if newAgent == 0:
           depth -= 1
 
+        # agent is used for creating inherit states 
+        # newAgent is used for calling function for next agent
         min_return=pos_inf
         for legal_action in gameState.getLegalActions(agent):
           temp=self.minimaxFunc( gameState.generateSuccessor(agent, legal_action), newAgent, depth )
@@ -220,11 +230,10 @@ class MinimaxAgent(MultiAgentSearchAgent):
             maximizingPlayer = temp
             act = legal_action
         return act
-        # util.raiseNotDefined()
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
 
-    def min_value(self, gameState, agent, depth, a, b):
+    def min_value(self, gameState, agent, depth, alpha, beta):
       from decimal import Decimal                 # infinity values
       pos_inf = Decimal('Infinity')
 
@@ -234,38 +243,48 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       
       minimizing = pos_inf
       for legal_action in gameState.getLegalActions(agent):
+
         if agent==(gameState.getNumAgents()-1): #-1 because start from pacman is 0
-          ret_value, action_unused = self.max_value( gameState.generateSuccessor(agent, legal_action), depth-1, a, b)
+          ret_value, action_unused = self.max_value( gameState.generateSuccessor(agent, legal_action), depth-1, alpha, beta)
         else:
-          ret_value, action_unused = self.min_value( gameState.generateSuccessor(agent, legal_action), agent+1, depth, a, b)
+          ret_value, action_unused = self.min_value( gameState.generateSuccessor(agent, legal_action), agent+1, depth, alpha, beta)
+
         if ret_value<minimizing:
           minimizing = ret_value
           ret_action = legal_action             # get action for minimum value
-        if minimizing<a:                        #
+
+        if ret_value<beta:
+          beta = ret_value
+
+        if minimizing<alpha:
           return minimizing, ret_action
-        if minimizing<b:
-          b = minimizing
+
       return minimizing, ret_action
 
-    def max_value(self, gameState, depth, a, b):
+    def max_value(self, gameState, depth, alpha, beta):
       from decimal import Decimal               # infinity values
       neg_inf = Decimal('-Infinity')
 
       ret_action = Directions.STOP
       if gameState.isWin() or gameState.isLose() or depth==0:
         return self.evaluationFunction(gameState), ret_action
-      
+
       maximizing = neg_inf
       for legal_action in gameState.getLegalActions(0):
-        ret_value, act_unused = self.min_value( gameState.generateSuccessor(0, legal_action), 1, depth, a, b )
+        ret_value, act_unused = self.min_value( gameState.generateSuccessor(0, legal_action), 1, depth, alpha, beta )
+        
         if maximizing<ret_value:
           maximizing = ret_value
           ret_action = legal_action
-        if maximizing>b:
+
+        if ret_value>alpha:
+          alpha = ret_value
+
+        if maximizing>beta:
           return maximizing, ret_action
-        if maximizing>a:
-          a = maximizing
+
       return maximizing, ret_action
+
     """
       Your minimax agent with alpha-beta pruning (question 3)
     """
@@ -277,9 +296,9 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         from decimal import Decimal # infinity values
         pos_inf = Decimal('Infinity')
         neg_inf = Decimal('-Infinity')
-        a = neg_inf
-        b = pos_inf
-        val_unused, ret_action = self.max_value(gameState, self.depth, a, b)  #0 is for pacman
+        alpha = neg_inf
+        beta = pos_inf
+        val_unused, ret_action = self.max_value(gameState, self.depth, alpha, beta)  #0 is for pacman
         return ret_action
         # util.raiseNotDefined()
 
@@ -304,14 +323,15 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           ret_value = float(self.expectimax( gameState.generateSuccessor(agent, legal_action), agent+1, depth ))
           ret_sum += ret_value
           ret_size += 1
-        return float(ret_sum)/float(ret_size) #average
+        return 3.5 * (float(ret_sum)/float(ret_size)) #average
+
       else: #pacman
         ret = neg_inf
         for legal_action in gameState.getLegalActions(0):
           ret_value = self.expectimax( gameState.generateSuccessor(0, legal_action), 1, depth )#1=pacman+1
           if ret_value>ret:
             ret = ret_value
-        return ret
+        return 3.5 * float(ret)
 
     def getAction(self, gameState):
         """
@@ -352,26 +372,27 @@ def betterEvaluationFunction(currentGameState):
     "*** YOUR CODE HERE ***"
     from decimal import Decimal # infinity values
     pos_inf = Decimal('Infinity')
-    # neg_inf = Decimal('-Infinity')
     
     pacman_pos = currentGameState.getPacmanPosition()
     food_list = currentGameState.getFood().asList()
     ghost_list = currentGameState.getGhostStates()
     capsule_list = currentGameState.getCapsules()
-    # newScaredTimes = [ghostState.scaredTimer for ghostState in ghost_list]
 
     if currentGameState.isWin():
       return pos_inf
+
     min_food = pos_inf
     for food in food_list:
       temp = util.manhattanDistance( food, pacman_pos )
       if temp<min_food:
         min_food = temp
+
     min_caps = pos_inf
     for caps in capsule_list:
       temp = util.manhattanDistance( caps, pacman_pos )        
       if temp<min_caps:
         min_caps = temp
+
     ghost_val = 0
     m_gh_list = list()
     for gh in ghost_list:
@@ -388,7 +409,8 @@ def betterEvaluationFunction(currentGameState):
           ghost_val -= 2
     if min(m_gh_list)>6:
       return (min_food + min_caps)*2
-    return currentGameState.getScore() + 10.0/min_food + ghost_val + 10.0/float(min_caps)
+
+    return currentGameState.getScore() + 6.0/float(min_food) + ghost_val + 10.0/float(min_caps)
 
 # Abbreviation
 better = betterEvaluationFunction
